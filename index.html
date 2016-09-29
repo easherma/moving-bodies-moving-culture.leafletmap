@@ -1,0 +1,551 @@
+<!doctype html>
+<html lang="en">
+    <head>
+      <title>Moving Bodies Timeline</title>
+        <meta charset="utf-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <meta name="viewport" content="initial-scale=1,user-scalable=no,maximum-scale=1,width=device-width">
+        <meta name="mobile-web-app-capable" content="yes">
+        <meta name="apple-mobile-web-app-capable" content="yes">
+        <link rel="stylesheet" href="https://unpkg.com/leaflet@1.0.0/dist/leaflet.css" />
+        <link rel="stylesheet" type="text/css" href="css/qgis2web.css">
+        <link rel="stylesheet" href="css/label.css" />
+        <link rel="stylesheet" href="css/MarkerCluster.css" />
+        <link rel="stylesheet" href="css/MarkerCluster.Default.css" />
+        <link href="node_modules/leaflet.timeline/dist/leaflet.timeline.min.css" rel="stylesheet">
+        <script src="https://unpkg.com/leaflet@1.0.0/dist/leaflet.js"></script>
+        <script src="js/leaflet-heat.js"></script>
+        <script src="js/leaflet.rotatedMarker.js"></script>
+        <script src="js/OSMBuildings-Leaflet.js"></script>
+        <script src="js/leaflet-hash.js"></script>
+        <script src="js/label.js"></script>
+        <script src="js/Autolinker.min.js"></script>
+        <script src="js/leaflet.markercluster.js"></script>
+        <script src="node_modules/leaflet.timeline/dist/leaflet.timeline.min.js"></script>
+        <script src="node_modules/leaflet.polyline.snakeanim/L.Polyline.SnakeAnim.js"></script>
+        <script src="data/indexed.geojson"></script>
+        <style>
+        @import url(http://fonts.googleapis.com/css?family=Open+Sans);
+        html, body{
+          margin: 0;
+          padding: 0;
+          font-family: "Open Sans", sans-serif;
+        }
+        /*#info{
+          position: fixed;
+          top: 0;
+          left: 0;
+          bottom: 0;
+          width: 20vw;
+          padding: 1em;
+        }*/
+        #map{
+          /*position: fixed;
+          top: 0;
+          left: 20vw;
+          bottom: 0;
+          right: 0;*/
+          width: 100vw;
+          height: 100vh;
+        }
+        .leaflet-bottom.leaflet-left{
+          width: 100%;
+        }
+        .leaflet-control-container .leaflet-timeline-controls{
+          box-sizing: border-box;
+          width: 100%;
+          margin: 0;
+          margin-bottom: 15px;
+        }
+        </style>
+
+    </head>
+    <!--<div id="info">
+      <h3>Number of Displayed Connections:</h3>
+      <ul id="displayed-list"></ul>
+    </div> -->
+    <body>
+        <div id="map">
+        </div>
+        <script src="data/json_collected0.js"></script>
+        <script>
+        var highlightLayer;
+
+        function highlightFeature(e) {
+            highlightLayer = e.target;
+            info.update(e.target.feature.properties);
+
+            if (e.target.feature.geometry.type === 'LineString') {
+              highlightLayer.setStyle({
+                color: '#003fff',
+                weight: '6',
+                lineCap: 'round'
+              });
+            } else {
+              highlightLayer.setStyle({
+
+                color: '#003fff',
+                weight: '6',
+                lineCap: 'round',
+                fillOpacity: 1
+              });
+            }
+        }
+        L.ImageOverlay.include({
+            getBounds: function () {
+                return this._bounds;
+            }
+        });
+        //map.fitBounds(group.getBounds());
+        var map = L.map('map', {
+            zoomControl:true, maxZoom:28, minZoom:1
+        }).fitBounds([[63.3144,93.88402],[-37.39535,-118.32691]]);
+        var hash = new L.Hash(map);
+        map.attributionControl.addAttribution('<a href="https://github.com/tomchadwin/qgis2web" target="_blank">qgis2web</a>');
+        var feature_group = new L.featureGroup([]);
+        var my_timeline = new L.featureGroup([]);
+        var bounds_group = new L.featureGroup([]);
+        var raster_group = new L.LayerGroup([]);
+        var basemap0 = L.tileLayer('http://a.tile.stamen.com/watercolor/{z}/{x}/{y}.png', {
+            attribution: 'Map tiles by <a href="http://stamen.com">Stamen Design</a>,<a href="http://creativecommons.org/licenses/by/3.0">CC BY 3.0</a> &mdash;Map data: &copy; <a href="http://openstreetmap.org">OpenStreetMap</a>contributors,<a href="http://creativecommons.org/licenses/by-sa/2.0/">CC-BY-SA</a>',
+            maxZoom: 28
+        });
+        basemap0.addTo(map);
+        var initialOrder = new Array();
+        var layerOrder = new Array();
+        function stackLayers() {
+            for (index = 0; index < initialOrder.length; index++) {
+                map.removeLayer(initialOrder[index]);
+                map.addLayer(initialOrder[index]);
+            }
+        }
+        function restackLayers() {
+            for (index = 0; index < layerOrder.length; index++) {
+                layerOrder[index].bringToFront();
+            }
+        }
+        layerControl = L.control.layers({},{},{collapsed:false});
+        function geoJson2heat(geojson, weight) {
+          return geojson.features.map(function(feature) {
+            return [
+              feature.geometry.coordinates[1],
+              feature.geometry.coordinates[0],
+              feature.properties[weight]
+            ];
+          });
+        }
+
+
+        function pop_collected0(feature, layer) {
+            layer.on({
+                mouseout: function(e) {
+                    layer.setStyle(doStylecollected0(feature));
+
+                },
+                mouseover: highlightFeature,
+            });
+            var popupContent = '<table><tr><td colspan="2">' + (feature.properties['_uid_'] !== null ? Autolinker.link(String(feature.properties['_uid_'])) : '') + '</td></tr><tr><th scope="row">parent</th><td>' + (feature.properties['parent'] !== null ? Autolinker.link(String(feature.properties['parent'])) : '') + '</td></tr><tr><th scope="row">id_number</th><td>' + (feature.properties['id_number'] !== null ? Autolinker.link(String(feature.properties['id_number'])) : '') + '</td></tr><tr><th scope="row">children</th><td>' + (feature.properties['children'] !== null ? Autolinker.link(String(feature.properties['children'])) : '') + '</td></tr></table>';
+            layer.bindPopup(popupContent);
+
+            // method that we will use to update the control based on feature properties passed
+
+
+
+
+        }
+
+        function doStylecollected0(feature) {
+			switch (feature.properties['id_number']) {
+                case 1:
+                    return {
+                    color: '#ffffcc',
+                    weight: '4.24',
+                    dashArray: '',
+                    lineCap: 'square',
+                    lineJoin: 'bevel',
+                    opacity: '0.79',
+                };
+                break;
+
+                case 2:
+                    return {
+                    color: '#f5fbc4',
+                    weight: '4.24',
+                    dashArray: '',
+                    lineCap: 'square',
+                    lineJoin: 'bevel',
+                    opacity: '0.79',
+                };
+                break;
+
+                case 3:
+                    return {
+                    color: '#ebf7bb',
+                    weight: '4.24',
+                    dashArray: '',
+                    lineCap: 'square',
+                    lineJoin: 'bevel',
+                    opacity: '0.79',
+                };
+                break;
+
+                case 4:
+                    return {
+                    color: '#e1f3b3',
+                    weight: '4.24',
+                    dashArray: '',
+                    lineCap: 'square',
+                    lineJoin: 'bevel',
+                    opacity: '0.79',
+                };
+                break;
+
+                case 5:
+                    return {
+                    color: '#d7efaa',
+                    weight: '4.24',
+                    dashArray: '',
+                    lineCap: 'square',
+                    lineJoin: 'bevel',
+                    opacity: '0.79',
+                };
+                break;
+
+                case 6:
+                    return {
+                    color: '#cceba2',
+                    weight: '4.24',
+                    dashArray: '',
+                    lineCap: 'square',
+                    lineJoin: 'bevel',
+                    opacity: '0.79',
+                };
+                break;
+
+                case 7:
+                    return {
+                    color: '#c2e699',
+                    weight: '4.24',
+                    dashArray: '',
+                    lineCap: 'square',
+                    lineJoin: 'bevel',
+                    opacity: '0.79',
+                };
+                break;
+
+                case 8:
+                    return {
+                    color: '#b6e194',
+                    weight: '4.24',
+                    dashArray: '',
+                    lineCap: 'square',
+                    lineJoin: 'bevel',
+                    opacity: '0.79',
+                };
+                break;
+
+                case 9:
+                    return {
+                    color: '#a9dc8e',
+                    weight: '4.24',
+                    dashArray: '',
+                    lineCap: 'square',
+                    lineJoin: 'bevel',
+                    opacity: '0.79',
+                };
+                break;
+
+                case 10:
+                    return {
+                    color: '#9dd689',
+                    weight: '4.24',
+                    dashArray: '',
+                    lineCap: 'square',
+                    lineJoin: 'bevel',
+                    opacity: '0.79',
+                };
+                break;
+
+                case 11:
+                    return {
+                    color: '#91d184',
+                    weight: '4.24',
+                    dashArray: '',
+                    lineCap: 'square',
+                    lineJoin: 'bevel',
+                    opacity: '0.79',
+                };
+                break;
+
+                case 12:
+                    return {
+                    color: '#84cc7e',
+                    weight: '4.24',
+                    dashArray: '',
+                    lineCap: 'square',
+                    lineJoin: 'bevel',
+                    opacity: '0.79',
+                };
+                break;
+
+                case 13:
+                    return {
+                    color: '#78c679',
+                    weight: '4.24',
+                    dashArray: '',
+                    lineCap: 'square',
+                    lineJoin: 'bevel',
+                    opacity: '0.79',
+                };
+                break;
+
+                case 14:
+                    return {
+                    color: '#6cc073',
+                    weight: '4.24',
+                    dashArray: '',
+                    lineCap: 'square',
+                    lineJoin: 'bevel',
+                    opacity: '0.79',
+                };
+                break;
+
+                case 15:
+                    return {
+                    color: '#60bb6d',
+                    weight: '4.24',
+                    dashArray: '',
+                    lineCap: 'square',
+                    lineJoin: 'bevel',
+                    opacity: '0.79',
+                };
+                break;
+
+                case 16:
+                    return {
+                    color: '#54b566',
+                    weight: '4.24',
+                    dashArray: '',
+                    lineCap: 'square',
+                    lineJoin: 'bevel',
+                    opacity: '0.79',
+                };
+                break;
+
+                case 17:
+                    return {
+                    color: '#48af60',
+                    weight: '4.24',
+                    dashArray: '',
+                    lineCap: 'square',
+                    lineJoin: 'bevel',
+                    opacity: '0.79',
+                };
+                break;
+
+                case 18:
+                    return {
+                    color: '#3da95a',
+                    weight: '4.24',
+                    dashArray: '',
+                    lineCap: 'square',
+                    lineJoin: 'bevel',
+                    opacity: '0.79',
+                };
+                break;
+
+                case 19:
+                    return {
+                    color: '#31a354',
+                    weight: '4.24',
+                    dashArray: '',
+                    lineCap: 'square',
+                    lineJoin: 'bevel',
+                    opacity: '0.79',
+                };
+                break;
+
+                case 20:
+                    return {
+                    color: '#28994f',
+                    weight: '4.24',
+                    dashArray: '',
+                    lineCap: 'square',
+                    lineJoin: 'bevel',
+                    opacity: '0.79',
+                };
+                break;
+
+                case 21:
+                    return {
+                    color: '#208f4a',
+                    weight: '4.24',
+                    dashArray: '',
+                    lineCap: 'square',
+                    lineJoin: 'bevel',
+                    opacity: '0.79',
+                };
+                break;
+
+                case 22:
+                    return {
+                    color: '#188645',
+                    weight: '4.24',
+                    dashArray: '',
+                    lineCap: 'square',
+                    lineJoin: 'bevel',
+                    opacity: '0.79',
+                };
+                break;
+
+                case 23:
+                    return {
+                    color: '#107c40',
+                    weight: '4.24',
+                    dashArray: '',
+                    lineCap: 'square',
+                    lineJoin: 'bevel',
+                    opacity: '0.79',
+                };
+                break;
+
+                case 24:
+                    return {
+                    color: '#08723c',
+                    weight: '4.24',
+                    dashArray: '',
+                    lineCap: 'square',
+                    lineJoin: 'bevel',
+                    opacity: '0.79',
+                };
+                break;
+
+                default:
+                    return {
+                    color: '#006837',
+                    weight: '4.24',
+                    dashArray: '',
+                    lineCap: 'square',
+                    lineJoin: 'bevel',
+                    opacity: '0.79',
+                };
+                break;
+
+            }
+        }
+        var json_collected0JSON = new L.geoJson(json_collected0, {
+            onEachFeature: pop_collected0,
+            style: doStylecollected0
+        });
+        layerOrder[layerOrder.length] = json_collected0JSON;
+        bounds_group.addLayer(json_collected0JSON);
+        initialOrder[initialOrder.length] = json_collected0JSON;
+        feature_group.addLayer(json_collected0JSON);
+        raster_group.addTo(map);
+        //feature_group.addTo(map);
+        //stackLayers();
+        map.on('overlayadd', restackLayers);
+        var info = L.control();
+
+        info.onAdd = function (map) {
+            this._div = L.DomUtil.create('div', 'info'); // create a div with a class "info"
+            this.update();
+            return this._div;
+        };
+        info.update = function (props) {
+          this._div.innerHTML = '<h4>Info</h4>' +  (props ?
+        //'<b>' + props.parent + '</b><br />' + props.children + ' connections'
+        '<table><tr><td colspan="2">' + '</td></tr><tr><th scope="row">parent</th><td>' + (props['parent'] !== null ? Autolinker.link(String(props['parent'])) : '') + '</td></tr><tr><th scope="row">id_number</th><td>' + (props['id_number'] !== null ? Autolinker.link(String(props['id_number'])) : '') + '</td></tr><tr><th scope="row">children</th><td>' + (props['children'] !== null ? Autolinker.link(String(props['children'])) : '') + '</td></tr></table>'
+
+        : 'Hover');
+          //'<table><tr><td colspan="2">' + (feature.properties['_uid_'] !== null ? Autolinker.link(String(feature.properties['_uid_'])) : '') + '</td></tr><tr><th scope="row">parent</th><td>' + (feature.properties['parent'] !== null ? Autolinker.link(String(feature.properties['parent'])) : '') + '</td></tr><tr><th scope="row">id_number</th><td>' + (feature.properties['id_number'] !== null ? Autolinker.link(String(feature.properties['id_number'])) : '') + '</td></tr><tr><th scope="row">children</th><td>' + (feature.properties['children'] !== null ? Autolinker.link(String(feature.properties['children'])) : '') + '</td></tr></table>';
+
+        };
+        info.addTo(map);
+
+        function updateList(timeline){
+          var displayed = timeline.getLayers();
+          var list = document.getElementById('displayed-list');
+          var total = 0;
+
+          // list.innerHTML = "";
+          // displayed.forEach(function(quake){
+          //   var li = document.createElement('li');
+          //   li.innerHTML = total += quake.feature.properties.children;
+          //   list.innerHTML = li.innerHTML;
+          // });
+        }
+
+        // eqfeed_callback is called once the earthquake geojsonp file below loads
+
+          var getInterval = function(quake) {
+            // earthquake data only has a time, so we'll use that as a "start"
+            // and the "end" will be that + some value based on magnitude
+            // 18000000 = 30 minutes, so a quake of magnitude 5 would show on the
+            // map for 150 minutes or 2.5 hours
+            return {
+              start: quake.properties.start,
+              end:   25
+            };
+          };
+          var timeline = L.timeline(data, {
+            getInterval: getInterval,
+            waitToUpdateMap: true,
+            onEachFeature: pop_collected0,
+            style: doStylecollected0
+
+          });
+
+
+function drawArc(source, destination, leafletMap) {
+for (var i = 0; i < source.length; i++) {
+L.Polyline.Arc([source[i].geometry.coordinates[1], source[i].geometry.coordinates[0]],
+        destination,
+        {
+            color: "red",
+            vertices: 200,
+            snakingSpeed: 200
+        })
+    .addTo(leafletMap).snakeIn();
+}
+}
+          /*
+          var timeline = L.timeline(data, {
+          getInterval: getInterval,
+            style: function(data){
+              return {
+                stroke: false,
+                color: getColorFor(data.properties.name),
+                fillOpacity: 0.5
+              }
+            },
+            waitToUpdateMap: true,
+            start: data.properties.start,
+            end:   data.properties.end
+          });*/
+          var timelineControl = L.timelineSliderControl({
+            formatOutput: function(data){
+            return innerHTML = data;
+            },
+            enableKeyboardControls: true,
+            steps: 25
+          });
+          //my_timeline.addLayer(timeline);
+          //timeline.addTo(my_timeline);
+          //map.addLayer(route);
+          //my_timeline.addTo(map);
+          timeline.addTo(map);
+          timelineControl.addTo(map);
+          timelineControl.addTimelines(timeline);
+          timeline.on('change', function(e){
+            updateList(e.target);
+            //timeline.remove();
+            //timeline.addTo(map).snakeIn();
+            //my_timeline.snakeIn().addTo(map);
+          });
+          updateList(timeline);
+
+        </script>
+
+    </body>
+</html>
