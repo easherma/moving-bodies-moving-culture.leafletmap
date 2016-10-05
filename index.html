@@ -699,7 +699,7 @@ masterTimeline.addTo(map);
           collectedTimeline.addTo(map);
           //timelineControl.addTo(map);
           map.addControl(timelineControl);
-          timelineControl.addTimelines(masterTimeline, collected);
+          timelineControl.addTimelines(masterTimeline, collectedTimeline);
           masterTimeline.on('change', function(e){
             updateList(e.target);
             //timeline.remove();
