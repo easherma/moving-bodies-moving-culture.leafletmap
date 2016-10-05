@@ -21,9 +21,11 @@
         <script src="js/label.js"></script>
         <script src="js/Autolinker.min.js"></script>
         <script src="js/leaflet.markercluster.js"></script>
+        <script src="js/leaflet.groupedlayercontrol.min.js"></script>
         <script src="node_modules/leaflet.timeline/dist/leaflet.timeline.min.js"></script>
         <script src="node_modules/leaflet.polyline.snakeanim/L.Polyline.SnakeAnim.js"></script>
-        <script src="data/indexed.geojson"></script>
+        <script src="data/indexed.js"></script>
+
         <style>
         @import url(http://fonts.googleapis.com/css?family=Open+Sans);
         html, body{
@@ -68,12 +70,13 @@
         <div id="map">
         </div>
         <script src="data/json_collected0.js"></script>
+        <script src="data/master_linestring.js"></script>
         <script>
         var highlightLayer;
 
         function highlightFeature(e) {
             highlightLayer = e.target;
-            info.update(e.target.feature.properties);
+            //info.update(e.target.feature.properties);
 
             if (e.target.feature.geometry.type === 'LineString') {
               highlightLayer.setStyle({
@@ -91,6 +94,26 @@
               });
             }
         }
+        function highlightFeature1(e) {
+            highlightLayer = e.target;
+            //info.update(e.target.feature.properties);
+
+            if (e.target.feature.geometry.type === 'LineString') {
+              highlightLayer.setStyle({
+                //color: '#003fff',
+                weight: '6',
+                lineCap: 'round'
+              });
+            } else {
+              highlightLayer.setStyle({
+
+                //color: '#003fff',
+                weight: '6',
+                lineCap: 'round',
+                fillOpacity: 1
+              });
+            }
+        }
         L.ImageOverlay.include({
             getBounds: function () {
                 return this._bounds;
@@ -101,16 +124,29 @@
             zoomControl:true, maxZoom:28, minZoom:1
         }).fitBounds([[63.3144,93.88402],[-37.39535,-118.32691]]);
         var hash = new L.Hash(map);
-        map.attributionControl.addAttribution('<a href="https://github.com/tomchadwin/qgis2web" target="_blank">qgis2web</a>');
+        map.attributionControl.addAttribution('<a href="http://osgisomg.com/">Map by Eric Sherman, OSGISOMG</a> &copy; <a href="http://cartodb.com/attributions">Tiles from OSM, style from 2.24Carto</a>');
         var feature_group = new L.featureGroup([]);
         var my_timeline = new L.featureGroup([]);
-        var bounds_group = new L.featureGroup([]);
-        var raster_group = new L.LayerGroup([]);
-        var basemap0 = L.tileLayer('http://a.tile.stamen.com/watercolor/{z}/{x}/{y}.png', {
-            attribution: 'Map tiles by <a href="http://stamen.com">Stamen Design</a>,<a href="http://creativecommons.org/licenses/by/3.0">CC BY 3.0</a> &mdash;Map data: &copy; <a href="http://openstreetmap.org">OpenStreetMap</a>contributors,<a href="http://creativecommons.org/licenses/by-sa/2.0/">CC-BY-SA</a>',
-            maxZoom: 28
+
+        map.createPane('labels');
+        map.getPane('labels').style.zIndex = 650;
+        map.getPane('labels').style.pointerEvents = 'none';
+        map.createPane('collected');
+        map.createPane('master');
+        var basemap0 = L.tileLayer('http://{s}.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}.png', {
+          attribution: '&copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="http://cartodb.com/attributions">CartoDB</a>',
+          subdomains: 'abcd',
+            maxZoom: 19
         });
         basemap0.addTo(map);
+        var basemapLabels = L.tileLayer('http://{s}.basemaps.cartocdn.com/dark_only_labels/{z}/{x}/{y}.png', {
+          attribution: '&copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="http://cartodb.com/attributions">CartoDB</a>',
+          pane: 'labels',
+          subdomains: 'abcd',
+            maxZoom: 19
+        });
+        basemapLabels.addTo(map);
+
         var initialOrder = new Array();
         var layerOrder = new Array();
         function stackLayers() {
@@ -125,6 +161,15 @@
             }
         }
         layerControl = L.control.layers({},{},{collapsed:false});
+        function highlightLayer1(layerID) {
+    map._layers['name'+LayerID].setStyle(highlight);
+}
+
+var highlight = {
+    'color': '#333333',
+    'weight': 2,
+    'opacity': 1
+};
         function geoJson2heat(geojson, weight) {
           return geojson.features.map(function(feature) {
             return [
@@ -136,7 +181,7 @@
         }
 
 
-        function pop_collected0(feature, layer) {
+        /* function pop_collected0(feature, layer) {
             layer.on({
                 mouseout: function(e) {
                     layer.setStyle(doStylecollected0(feature));
@@ -149,17 +194,136 @@
 
             // method that we will use to update the control based on feature properties passed
 
+        } */
+
+        function pop_collected0(feature, layer) {
+            layer.on({
+                mouseout: function(e) {
+                    layer.setStyle(doStylecollected0(feature));
 
 
+                },
+                mouseover: highlightFeature,
+            });
+            //var popupContent = '<table><tr><th scope="row">End-Nickname</th><td>' + (feature.properties['End-Nickname'] !== null ? Autolinker.link(String(feature.properties['End-Nickname'])) : '') + '</td></tr><tr><th scope="row">Strength</th><td>' + (feature.properties['Strength'] !== null ? Autolinker.link(String(feature.properties['Strength'])) : '') + '</td></tr><tr><th scope="row">Start-Country</th><td>' + (feature.properties['Start-Country'] !== null ? Autolinker.link(String(feature.properties['Start-Country'])) : '') + '</td></tr><tr><th scope="row">Comparison</th><td>' + (feature.properties['Comparison'] !== null ? Autolinker.link(String(feature.properties['Comparison'])) : '') + '</td></tr><tr><th scope="row">Start-State</th><td>' + (feature.properties['Start-State'] !== null ? Autolinker.link(String(feature.properties['Start-State'])) : '') + '</td></tr><tr><th scope="row">id_number</th><td>' + (feature.properties['id_number'] !== null ? Autolinker.link(String(feature.properties['id_number'])) : '') + '</td></tr><tr><th scope="row">End-Country</th><td>' + (feature.properties['End-Country'] !== null ? Autolinker.link(String(feature.properties['End-Country'])) : '') + '</td></tr><tr><th scope="row">Start-City</th><td>' + (feature.properties['Start-City'] !== null ? Autolinker.link(String(feature.properties['Start-City'])) : '') + '</td></tr><tr><th scope="row">End-Mass</th><td>' + (feature.properties['End-Mass'] !== null ? Autolinker.link(String(feature.properties['End-Mass'])) : '') + '</td></tr><tr><th scope="row">Association-Type</th><td>' + (feature.properties['Association-Type'] !== null ? Autolinker.link(String(feature.properties['Association-Type'])) : '') + '</td></tr><tr><th scope="row">End-State</th><td>' + (feature.properties['End-State'] !== null ? Autolinker.link(String(feature.properties['End-State'])) : '') + '</td></tr><tr><th scope="row">End-City</th><td>' + (feature.properties['End-City'] !== null ? Autolinker.link(String(feature.properties['End-City'])) : '') + '</td></tr><tr><th scope="row">Start-Mass</th><td>' + (feature.properties['Start-Mass'] !== null ? Autolinker.link(String(feature.properties['Start-Mass'])) : '') + '</td></tr><tr><td colspan="2">' + (feature.properties['start'] !== null ? Autolinker.link(String(feature.properties['start'])) : '') + '</td></tr><tr><td colspan="2">' + (feature.properties['end'] !== null ? Autolinker.link(String(feature.properties['end'])) : '') + '</td></tr></table>';
+
+            var popupContent = '<table><tr><td colspan="2">' + (feature.properties['_uid_'] !== null ? Autolinker.link(String(feature.properties['_uid_'])) : '') + '</td></tr><tr><th scope="row">parent</th><td>' + (feature.properties['parent'] !== null ? Autolinker.link(String(feature.properties['parent'])) : '') + '</td></tr><tr><th scope="row">id_number</th><td>' + (feature.properties['id_number'] !== null ? Autolinker.link(String(feature.properties['id_number'])) : '') + '</td></tr><tr><th scope="row">children</th><td>' + (feature.properties['children'] !== null ? Autolinker.link(String(feature.properties['children'])) : '') + '</td></tr></table>';
+            layer.bindPopup(popupContent);
+
+            // method that we will use to update the control based on feature properties passed
 
         }
 
+        function pop_master(feature, layer) {
+            layer.on({
+                mouseout: function(e) {
+                    //layer.setStyle(doStyleMaster_linestring(feature));
+                    layer.setStyle(doStyleColor(feature));
+                    layer.setStyle(doStyleWeight(feature));
+                    layer.setStyle(doStyleType(feature));
+
+                },
+                mouseover: highlightFeature1,
+            });
+            var popupContent = '<table><tr><th scope="row">End-Nickname</th><td>' + (feature.properties['End-Nickname'] !== null ? Autolinker.link(String(feature.properties['End-Nickname'])) : '') + '</td></tr><tr><th scope="row">Strength</th><td>' + (feature.properties['Strength'] !== null ? Autolinker.link(String(feature.properties['Strength'])) : '') + '</td></tr><tr><th scope="row">Start-Country</th><td>' + (feature.properties['Start-Country'] !== null ? Autolinker.link(String(feature.properties['Start-Country'])) : '') + '</td></tr><tr><th scope="row">Comparison</th><td>' + (feature.properties['Comparison'] !== null ? Autolinker.link(String(feature.properties['Comparison'])) : '') + '</td></tr><tr><th scope="row">Start-State</th><td>' + (feature.properties['Start-State'] !== null ? Autolinker.link(String(feature.properties['Start-State'])) : '') + '</td></tr><tr><th scope="row">id_number</th><td>' + (feature.properties['id_number'] !== null ? Autolinker.link(String(feature.properties['id_number'])) : '') + '</td></tr><tr><th scope="row">End-Country</th><td>' + (feature.properties['End-Country'] !== null ? Autolinker.link(String(feature.properties['End-Country'])) : '') + '</td></tr><tr><th scope="row">Start-City</th><td>' + (feature.properties['Start-City'] !== null ? Autolinker.link(String(feature.properties['Start-City'])) : '') + '</td></tr><tr><th scope="row">End-Mass</th><td>' + (feature.properties['End-Mass'] !== null ? Autolinker.link(String(feature.properties['End-Mass'])) : '') + '</td></tr><tr><th scope="row">Association-Type</th><td>' + (feature.properties['Association-Type'] !== null ? Autolinker.link(String(feature.properties['Association-Type'])) : '') + '</td></tr><tr><th scope="row">End-State</th><td>' + (feature.properties['End-State'] !== null ? Autolinker.link(String(feature.properties['End-State'])) : '') + '</td></tr><tr><th scope="row">End-City</th><td>' + (feature.properties['End-City'] !== null ? Autolinker.link(String(feature.properties['End-City'])) : '') + '</td></tr><tr><th scope="row">Start-Mass</th><td>' + (feature.properties['Start-Mass'] !== null ? Autolinker.link(String(feature.properties['Start-Mass'])) : '') + '</td></tr><tr><td colspan="2">' + (feature.properties['start'] !== null ? Autolinker.link(String(feature.properties['start'])) : '') + '</td></tr><tr><td colspan="2">' + (feature.properties['end'] !== null ? Autolinker.link(String(feature.properties['end'])) : '') + '</td></tr></table>';
+
+            //var popupContent = '<table><tr><td colspan="2">' + (feature.properties['_uid_'] !== null ? Autolinker.link(String(feature.properties['_uid_'])) : '') + '</td></tr><tr><th scope="row">parent</th><td>' + (feature.properties['parent'] !== null ? Autolinker.link(String(feature.properties['parent'])) : '') + '</td></tr><tr><th scope="row">id_number</th><td>' + (feature.properties['id_number'] !== null ? Autolinker.link(String(feature.properties['id_number'])) : '') + '</td></tr><tr><th scope="row">children</th><td>' + (feature.properties['children'] !== null ? Autolinker.link(String(feature.properties['children'])) : '') + '</td></tr></table>';
+            layer.bindPopup(popupContent);
+            layer.setStyle(doStyleColor(feature));
+            layer.setStyle(doStyleWeight(feature));
+            layer.setStyle(doStyleType(feature));
+
+            // method that we will use to update the control based on feature properties passed
+
+        }
+
+var master_linestringJSON = new L.geoJSON(master_linestring, {
+    onEachFeature: pop_collected0,
+    style: doStyleMaster_linestring
+});
+
+feature_group.addLayer(master_linestringJSON);
+function doStyleMaster_linestring(feature) {
+    //switch (feature.properties.Strength || feature.properties['Association-Type']) {
+        //case 'Strong': return {weight: '6'};
+        //case 'Weak': return {weight: '2.45'};
+        //case 'Reference': return {weight: '20'};
+    //}
+
+        // if (feature.properties['Association-Type'] === 'Language' && feature.properties.Strength === 'Strong') { return { dashArray: '2%',weight: '4' };}
+        // if (feature.properties['Association-Type'] === 'PersonMetOrigin' && feature.properties.Strength === 'Strong') { return { dashArray: '4%', weight: '4'};}
+        // if (feature.properties['Association-Type'] === 'PersonOrigin'&& feature.properties.Strength === 'Strong') { return { dashArray: '6%',weight: '4'};}
+        // if (feature.properties['Association-Type'] === 'PersonTravel'&& feature.properties.Strength === 'Strong') { return { dashArray: '8%',weight: '4'};}
+        // if (feature.properties['Association-Type'] === 'PlaceToPlace'&& feature.properties.Strength === 'Strong') { return { dashArray: '10%',weight: '4'};}
+        // if (feature.properties['Association-Type'] === 'Reference'&& feature.properties.Strength === 'Strong') { return { dashArray: '12%', weight: '4'};}
+        //
+        // if (feature.properties['Association-Type'] === 'Language' && feature.properties.Strength === 'Weak' || feature.properties.Strength === 'Weak ') { return { dashArray: '2%',weight: '1' };}
+        // if (feature.properties['Association-Type'] === 'PersonMetOrigin' && feature.properties.Strength === 'Weak' || feature.properties.Strength === 'Weak ') { return { dashArray: '4%', weight: '1'};}
+        // if (feature.properties['Association-Type'] === 'PersonOrigin'&& feature.properties.Strength === 'Weak' || feature.properties.Strength === 'Weak ') { return { dashArray: '6%',weight: '1'};}
+        // if (feature.properties['Association-Type'] === 'PersonTravel'&& feature.properties.Strength === 'Weak' || feature.properties.Strength === 'Weak ') { return { dashArray: '8%',weight: '1'};}
+        // if (feature.properties['Association-Type'] === 'PlaceToPlace'&& feature.properties.Strength === 'Weak' || feature.properties.Strength === 'Weak ') { return { dashArray: '10%',weight: '1'};}
+        // if (feature.properties['Association-Type'] === 'Reference'&& feature.properties.Strength === 'Weak' || feature.properties.Strength === 'Weak ') { return { dashArray: '12%', weight: '1'};}
+
+
+
+}
+
+
+function doStyleWeight(feature){
+  if (feature.properties.Strength === 'Strong') {return {weight: '2.4'};}
+  if (feature.properties.Strength === 'Weak' || feature.properties.Strength === 'Weak ') {return {weight: '0.5'};}
+}
+
+function doStyleColor(feature){
+  if (feature.properties['id_number'] === 1) { return {color: '#F7FBFF'};}
+  if (feature.properties['id_number'] === 2) { return {color: '#EDF2F9'};}
+  if (feature.properties['id_number'] === 3) { return {color: '#E3EAF3'};}
+  if (feature.properties['id_number'] === 4) { return {color: '#DAE2ED'};}
+  if (feature.properties['id_number'] === 5) { return {color: '#D0DAE7'};}
+  if (feature.properties['id_number'] === 6) { return {color: '#C7D2E1'};}
+  if (feature.properties['id_number'] === 7) { return {color: '#BDCADB'};}
+  if (feature.properties['id_number'] === 8) { return {color: '#B4C2D5'};}
+  if (feature.properties['id_number'] === 9) { return {color: '#AABACF'};}
+  if (feature.properties['id_number'] === 10) { return {color: '#A0B1C9'};}
+  if (feature.properties['id_number'] === 11) { return {color: '#97A9C3'};}
+  if (feature.properties['id_number'] === 12) { return {color: '#8DA1BD'};}
+  if (feature.properties['id_number'] === 13) { return {color: '#8499B7'};}
+  if (feature.properties['id_number'] === 14) { return {color: '#7A91B2'};}
+  if (feature.properties['id_number'] === 15) { return {color: '#7189AC'};}
+  if (feature.properties['id_number'] === 16) { return {color: '#6781A6'};}
+  if (feature.properties['id_number'] === 17) { return {color: '#5E79A0'};}
+  if (feature.properties['id_number'] === 18) { return {color: '#54709A'};}
+  if (feature.properties['id_number'] === 19) { return {color: '#4A6894'};}
+  if (feature.properties['id_number'] === 20) { return {color: '#41608E'};}
+  if (feature.properties['id_number'] === 21) { return {color: '#375888'};}
+  if (feature.properties['id_number'] === 22) { return {color: '#2E5082'};}
+  if (feature.properties['id_number'] === 23) { return {color: '#24487C'};}
+  if (feature.properties['id_number'] === 24) { return {color: '#1B4076'};}
+  if (feature.properties['id_number'] === 25) { return {color: '#113870'};}
+  if (feature.properties['id_number'] === 26) { return {color: '#08306B'};}
+}
+
+function doStyleType(feature){
+  if (feature.properties['Association-Type'] === 'Language') { return { dashArray: '1, 5'};}
+  if (feature.properties['Association-Type'] === 'PersonMetOrigin') { return { dashArray: '5, 10'};}
+  if (feature.properties['Association-Type'] === 'PersonOrigin') { return { dashArray: '5, 5, 1, 5'};}
+  if (feature.properties['Association-Type'] === 'PersonTravel') { return { dashArray: '5, 1'};}
+  if (feature.properties['Association-Type'] === 'PlaceToPlace') { return { dashArray: ''};}
+  if (feature.properties['Association-Type'] === 'Reference') { return { dashArray: '1, 2'};}
+
+}
+
+
+
+//if id then color
+//if strength then weight
+//if
         function doStylecollected0(feature) {
 			switch (feature.properties['id_number']) {
                 case 1:
                     return {
                     color: '#ffffcc',
-                    weight: '4.24',
+                    weight: '2.24',
                     dashArray: '',
                     lineCap: 'square',
                     lineJoin: 'bevel',
@@ -170,7 +334,7 @@
                 case 2:
                     return {
                     color: '#f5fbc4',
-                    weight: '4.24',
+                    weight: '2.24',
                     dashArray: '',
                     lineCap: 'square',
                     lineJoin: 'bevel',
@@ -181,7 +345,7 @@
                 case 3:
                     return {
                     color: '#ebf7bb',
-                    weight: '4.24',
+                    weight: '2.24',
                     dashArray: '',
                     lineCap: 'square',
                     lineJoin: 'bevel',
@@ -192,7 +356,7 @@
                 case 4:
                     return {
                     color: '#e1f3b3',
-                    weight: '4.24',
+                    weight: '2.24',
                     dashArray: '',
                     lineCap: 'square',
                     lineJoin: 'bevel',
@@ -203,7 +367,7 @@
                 case 5:
                     return {
                     color: '#d7efaa',
-                    weight: '4.24',
+                    weight: '2.24',
                     dashArray: '',
                     lineCap: 'square',
                     lineJoin: 'bevel',
@@ -214,7 +378,7 @@
                 case 6:
                     return {
                     color: '#cceba2',
-                    weight: '4.24',
+                    weight: '2.24',
                     dashArray: '',
                     lineCap: 'square',
                     lineJoin: 'bevel',
@@ -225,7 +389,7 @@
                 case 7:
                     return {
                     color: '#c2e699',
-                    weight: '4.24',
+                    weight: '2.24',
                     dashArray: '',
                     lineCap: 'square',
                     lineJoin: 'bevel',
@@ -236,7 +400,7 @@
                 case 8:
                     return {
                     color: '#b6e194',
-                    weight: '4.24',
+                    weight: '2.24',
                     dashArray: '',
                     lineCap: 'square',
                     lineJoin: 'bevel',
@@ -247,7 +411,7 @@
                 case 9:
                     return {
                     color: '#a9dc8e',
-                    weight: '4.24',
+                    weight: '2.24',
                     dashArray: '',
                     lineCap: 'square',
                     lineJoin: 'bevel',
@@ -258,7 +422,7 @@
                 case 10:
                     return {
                     color: '#9dd689',
-                    weight: '4.24',
+                    weight: '2.24',
                     dashArray: '',
                     lineCap: 'square',
                     lineJoin: 'bevel',
@@ -269,7 +433,7 @@
                 case 11:
                     return {
                     color: '#91d184',
-                    weight: '4.24',
+                    weight: '2.24',
                     dashArray: '',
                     lineCap: 'square',
                     lineJoin: 'bevel',
@@ -280,7 +444,7 @@
                 case 12:
                     return {
                     color: '#84cc7e',
-                    weight: '4.24',
+                    weight: '2.24',
                     dashArray: '',
                     lineCap: 'square',
                     lineJoin: 'bevel',
@@ -291,7 +455,7 @@
                 case 13:
                     return {
                     color: '#78c679',
-                    weight: '4.24',
+                    weight: '2.24',
                     dashArray: '',
                     lineCap: 'square',
                     lineJoin: 'bevel',
@@ -302,7 +466,7 @@
                 case 14:
                     return {
                     color: '#6cc073',
-                    weight: '4.24',
+                    weight: '2.24',
                     dashArray: '',
                     lineCap: 'square',
                     lineJoin: 'bevel',
@@ -313,7 +477,7 @@
                 case 15:
                     return {
                     color: '#60bb6d',
-                    weight: '4.24',
+                    weight: '2.24',
                     dashArray: '',
                     lineCap: 'square',
                     lineJoin: 'bevel',
@@ -324,7 +488,7 @@
                 case 16:
                     return {
                     color: '#54b566',
-                    weight: '4.24',
+                    weight: '2.24',
                     dashArray: '',
                     lineCap: 'square',
                     lineJoin: 'bevel',
@@ -335,7 +499,7 @@
                 case 17:
                     return {
                     color: '#48af60',
-                    weight: '4.24',
+                    weight: '2.24',
                     dashArray: '',
                     lineCap: 'square',
                     lineJoin: 'bevel',
@@ -346,7 +510,7 @@
                 case 18:
                     return {
                     color: '#3da95a',
-                    weight: '4.24',
+                    weight: '2.24',
                     dashArray: '',
                     lineCap: 'square',
                     lineJoin: 'bevel',
@@ -357,7 +521,7 @@
                 case 19:
                     return {
                     color: '#31a354',
-                    weight: '4.24',
+                    weight: '2.24',
                     dashArray: '',
                     lineCap: 'square',
                     lineJoin: 'bevel',
@@ -368,7 +532,7 @@
                 case 20:
                     return {
                     color: '#28994f',
-                    weight: '4.24',
+                    weight: '2.24',
                     dashArray: '',
                     lineCap: 'square',
                     lineJoin: 'bevel',
@@ -379,7 +543,7 @@
                 case 21:
                     return {
                     color: '#208f4a',
-                    weight: '4.24',
+                    weight: '2.24',
                     dashArray: '',
                     lineCap: 'square',
                     lineJoin: 'bevel',
@@ -390,7 +554,7 @@
                 case 22:
                     return {
                     color: '#188645',
-                    weight: '4.24',
+                    weight: '2.24',
                     dashArray: '',
                     lineCap: 'square',
                     lineJoin: 'bevel',
@@ -401,7 +565,7 @@
                 case 23:
                     return {
                     color: '#107c40',
-                    weight: '4.24',
+                    weight: '2.24',
                     dashArray: '',
                     lineCap: 'square',
                     lineJoin: 'bevel',
@@ -412,7 +576,7 @@
                 case 24:
                     return {
                     color: '#08723c',
-                    weight: '4.24',
+                    weight: '2.24',
                     dashArray: '',
                     lineCap: 'square',
                     lineJoin: 'bevel',
@@ -423,7 +587,7 @@
                 default:
                     return {
                     color: '#006837',
-                    weight: '4.24',
+                    weight: '2.24',
                     dashArray: '',
                     lineCap: 'square',
                     lineJoin: 'bevel',
@@ -438,10 +602,10 @@
             style: doStylecollected0
         });
         layerOrder[layerOrder.length] = json_collected0JSON;
-        bounds_group.addLayer(json_collected0JSON);
+
         initialOrder[initialOrder.length] = json_collected0JSON;
         feature_group.addLayer(json_collected0JSON);
-        raster_group.addTo(map);
+
         //feature_group.addTo(map);
         //stackLayers();
         map.on('overlayadd', restackLayers);
@@ -461,7 +625,7 @@
           //'<table><tr><td colspan="2">' + (feature.properties['_uid_'] !== null ? Autolinker.link(String(feature.properties['_uid_'])) : '') + '</td></tr><tr><th scope="row">parent</th><td>' + (feature.properties['parent'] !== null ? Autolinker.link(String(feature.properties['parent'])) : '') + '</td></tr><tr><th scope="row">id_number</th><td>' + (feature.properties['id_number'] !== null ? Autolinker.link(String(feature.properties['id_number'])) : '') + '</td></tr><tr><th scope="row">children</th><td>' + (feature.properties['children'] !== null ? Autolinker.link(String(feature.properties['children'])) : '') + '</td></tr></table>';
 
         };
-        info.addTo(map);
+        //info.addTo(map);
 
         function updateList(timeline){
           var displayed = timeline.getLayers();
@@ -478,37 +642,17 @@
 
         // eqfeed_callback is called once the earthquake geojsonp file below loads
 
-          var getInterval = function(quake) {
+          var getInterval = function(data) {
             // earthquake data only has a time, so we'll use that as a "start"
             // and the "end" will be that + some value based on magnitude
             // 18000000 = 30 minutes, so a quake of magnitude 5 would show on the
             // map for 150 minutes or 2.5 hours
             return {
-              start: quake.properties.start,
+              start: data.properties.start,
               end:   25
             };
           };
-          var timeline = L.timeline(data, {
-            getInterval: getInterval,
-            waitToUpdateMap: true,
-            onEachFeature: pop_collected0,
-            style: doStylecollected0
 
-          });
-
-
-function drawArc(source, destination, leafletMap) {
-for (var i = 0; i < source.length; i++) {
-L.Polyline.Arc([source[i].geometry.coordinates[1], source[i].geometry.coordinates[0]],
-        destination,
-        {
-            color: "red",
-            vertices: 200,
-            snakingSpeed: 200
-        })
-    .addTo(leafletMap).snakeIn();
-}
-}
           /*
           var timeline = L.timeline(data, {
           getInterval: getInterval,
@@ -530,21 +674,76 @@ L.Polyline.Arc([source[i].geometry.coordinates[1], source[i].geometry.coordinate
             enableKeyboardControls: true,
             steps: 25
           });
+          var masterTimeline = L.timeline(master_linestring, {
+            getInterval: getInterval,
+            //waitToUpdateMap: true,
+            onEachFeature: pop_master,
+            style: doStyleMaster_linestring
+
+          });
+masterTimeline.addTo(map);
+
+          var collectedTimeline = L.timeline(data, {
+            getInterval: getInterval,
+            //waitToUpdateMap: true,
+            onEachFeature: pop_collected0,
+            style: doStylecollected0
+
+          });
           //my_timeline.addLayer(timeline);
           //timeline.addTo(my_timeline);
           //map.addLayer(route);
           //my_timeline.addTo(map);
-          timeline.addTo(map);
-          timelineControl.addTo(map);
-          timelineControl.addTimelines(timeline);
-          timeline.on('change', function(e){
+
+
+          collectedTimeline.addTo(map);
+          //timelineControl.addTo(map);
+          map.addControl(timelineControl);
+          timelineControl.addTimelines(masterTimeline);
+          masterTimeline.on('change', function(e){
             updateList(e.target);
             //timeline.remove();
             //timeline.addTo(map).snakeIn();
             //my_timeline.snakeIn().addTo(map);
           });
-          updateList(timeline);
+          collectedTimeline.on('change', function(e){
+            updateList(e.target);
+            //timeline.remove();
+            //timeline.addTo(map).snakeIn();
+            //my_timeline.snakeIn().addTo(map);
+          });
+          updateList(collectedTimeline);
+          updateList(masterTimeline);
+var baseLayers = {
+};
+var master = L.featureGroup([masterTimeline, collectedTimeline]);
+//var collected = L.featureGroup([collectedTimeline]);
+var collected = L.featureGroup([json_collected0JSON]);
+var collectedMaps = {
+    //"Collected": collected,
+    "Master": master
+};
 
+L.control.layers(baseLayers,{'Legend<br />&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<img src="legend/masterlinestring0_Language.png" /> Language<br />&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<img src="legend/masterlinestring0_PersonMetOrigin.png" /> PersonMetOrigin<br />&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<img src="legend/masterlinestring0_PersonOrigin.png" /> PersonOrigin<br />&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<img src="legend/masterlinestring0_PersonTravel.png" /> PersonTravel<br />&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<img src="legend/masterlinestring0_PlaceToPlace.png" /> PlaceToPlace<br />&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<img src="legend/masterlinestring0_Reference.png" /> Reference<br />': masterTimeline,},{collapsed:false}).addTo(map);
+
+var groupedOverlays = {
+  "": {
+    "Individual Lines": masterTimeline,
+    "All Lines": collected
+  }
+};
+
+var options = {
+  // Make the "Landmarks" group exclusive (use radio inputs)
+  exclusiveGroups: [""],
+  // Show a checkbox next to non-exclusive group labels for toggling all
+  groupCheckboxes: true,
+  collapsed:false
+};
+
+L.control.groupedLayers(baseLayers, groupedOverlays, options).addTo(map);
+
+//L.control.layers(baseMaps, collectedMaps).addTo(map);
         </script>
 
     </body>
